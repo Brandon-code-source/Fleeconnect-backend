@@ -7,6 +7,8 @@ from database import engine, SessionLocal, Base
 from models.listing import Listing
 from schemas import ListingCreate, ListingOut, UserCreate, UserLogin, UserOut
 import json
+import random
+import string
 
 Base.metadata.create_all(bind=engine)
 
@@ -169,7 +171,7 @@ def mark_sold(listing_id: int, db: Session = Depends(get_db)):
 
 @app.post("/login")
 def login(user: UserLogin, db: Session = Depends(get_db)):
-    found_user = db.query(User).filter(User.email == user.email).first()
+    found_user = db.query(User).filter(User.email.ilike(user.email.strip())).first()
 
     if not found_user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -262,3 +264,38 @@ def suspend_user(user_id: int, db: Session = Depends(get_db)):
     db.commit()
 
     return {"message": "User suspended"}
+
+
+@app.post("/reset-password")
+def reset_password(email: str, db: Session = Depends(get_db)):
+
+    user = db.query(User).filter(User.email.ilike(email.strip())).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # generate temporary password
+
+    temp_password = "".join(random.choices(string.ascii_letters + string.digits, k=8))
+
+    user.password = temp_password
+
+    db.commit()
+
+    return {
+        "message": "Password reset",
+        "temp_password": temp_password,  # ⚠️ for now (dev only)
+    }
+
+
+@app.put("/change-password/{user_id}")
+def change_password(user_id: int, data: dict, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.password = data.get("password")
+    db.commit()
+
+    return {"message": "Password updated"}
