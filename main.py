@@ -10,6 +10,8 @@ import json
 import random
 import string
 
+print("🚀 STARTING APP...")
+
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
@@ -29,6 +31,11 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+@app.get("/test")
+def test():
+    return {"message": "working"}
 
 
 @app.get("/")
